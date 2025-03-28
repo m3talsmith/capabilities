@@ -14,6 +14,7 @@ pub enum AuthenticationError {
     SessionNotFound,
     InvalidToken,
     TokenExpired,
+    RegistrationFailed,
 }
 
 impl std::fmt::Display for AuthenticationError {
@@ -27,6 +28,7 @@ impl std::fmt::Display for AuthenticationError {
             AuthenticationError::SessionNotFound => write!(f, "Session not found"),
             AuthenticationError::InvalidToken => write!(f, "Invalid token"),
             AuthenticationError::TokenExpired => write!(f, "Token expired"),
+            AuthenticationError::RegistrationFailed => write!(f, "Registration failed"),
         }
     }
 }
@@ -87,6 +89,14 @@ impl DatabaseResource for Authentication {
     }
 
     fn is_updatable() -> bool {
+        true
+    }
+
+    fn is_creatable() -> bool {
+        true
+    }
+
+    fn is_expirable() -> bool {
         true
     }
 }

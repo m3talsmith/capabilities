@@ -1,7 +1,9 @@
 #[macro_export]
 macro_rules! find_all_resources_where_fields {
     ($resource:ty, $params:expr) => {{
-        use crate::database::{connection::get_connection, traits::DatabaseResource};
+        use crate::database::{
+            connection::get_connection, traits::DatabaseResource, values::DatabaseValue,
+        };
         use pluralizer::pluralize;
 
         async {
@@ -10,8 +12,8 @@ macro_rules! find_all_resources_where_fields {
 
             let fields = $params
                 .iter()
-                .map(|field| field.0.to_string())
-                .collect::<Vec<String>>();
+                .map(|field| field.0.clone())
+                .collect::<Vec<DatabaseValue>>();
             let values = $params.iter().map(|field| &field.1).collect::<Vec<_>>();
             let mut query = format!("SELECT * FROM {} WHERE ", resource_name);
             for (i, field) in fields.iter().enumerate() {

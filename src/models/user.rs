@@ -42,7 +42,7 @@ impl DatabaseResource for User {
             first_name: row.get("first_name"),
             last_name: row.get("last_name"),
             username: row.get("username"),
-            password: row.get("user_password"),
+            password: row.get("password_hash"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
             archived_at: row.get("archived_at"),
@@ -59,5 +59,13 @@ impl DatabaseResource for User {
 
     fn is_updatable() -> bool {
         true
+    }
+
+    fn is_creatable() -> bool {
+        true
+    }
+
+    fn is_expirable() -> bool {
+        false
     }
 }

@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
         .attach(cors)
         .mount("/api", routes![api::home::index])
         .mount(
-            "/api/authentications",
+            "/api/auth",
             routes![
                 api::authentications::login,
                 api::authentications::logout,

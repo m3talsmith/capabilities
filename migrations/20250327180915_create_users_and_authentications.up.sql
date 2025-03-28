@@ -6,9 +6,15 @@ CREATE TABLE
         last_name VARCHAR(255) NOT NULL,
         username VARCHAR(255) NOT NULL UNIQUE,
         password_hash VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        archived_at TIMESTAMP
+        created_at TIMESTAMP
+        WITH
+            TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP
+        WITH
+            TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            archived_at TIMESTAMP
+        WITH
+            TIME ZONE
     );
 
 CREATE INDEX idx_users_id ON users (id);
@@ -30,11 +36,19 @@ CREATE TABLE
         id VARCHAR(255) PRIMARY KEY,
         user_id VARCHAR(255) NOT NULL,
         token VARCHAR(255) NOT NULL,
-        expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        archived_at TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id)
+        expires_at TIMESTAMP
+        WITH
+            TIME ZONE NOT NULL,
+            created_at TIMESTAMP
+        WITH
+            TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP
+        WITH
+            TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            archived_at TIMESTAMP
+        WITH
+            TIME ZONE,
+            FOREIGN KEY (user_id) REFERENCES users (id)
     );
 
 CREATE INDEX idx_authentications_id ON authentications (id);

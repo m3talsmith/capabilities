@@ -1,5 +1,5 @@
 use serde::{self, Deserialize};
-use time::format_description::well_known::Rfc3339;
+use time::format_description::well_known::Iso8601;
 use time::OffsetDateTime;
 
 #[allow(unused)]
@@ -11,9 +11,10 @@ where
     S: serde::Serializer,
 {
     match date_time {
-        Some(dt) => {
-            serializer.serialize_str(&dt.format(&Rfc3339).map_err(serde::ser::Error::custom)?)
-        }
+        Some(dt) => serializer.serialize_str(
+            &dt.format(&Iso8601::DEFAULT)
+                .map_err(serde::ser::Error::custom)?,
+        ),
         None => serializer.serialize_none(),
     }
 }
@@ -28,7 +29,7 @@ where
     let s: Option<String> = Option::deserialize(deserializer)?;
     match s {
         Some(s) => Ok(Some(
-            OffsetDateTime::parse(&s, &Rfc3339).map_err(serde::de::Error::custom)?,
+            OffsetDateTime::parse(&s, &Iso8601::DEFAULT).map_err(serde::de::Error::custom)?,
         )),
         None => Ok(None),
     }
