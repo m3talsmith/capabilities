@@ -53,9 +53,15 @@ macro_rules! find_all_unarchived_resources_where_fields {
                 .map(|field| field.0.to_string())
                 .collect::<Vec<String>>();
             let values = $params.iter().map(|field| &field.1).collect::<Vec<_>>();
-            let mut query = format!("SELECT * FROM {} WHERE archived_at IS NULL ", resource_name);
+            let mut query = format!(
+                "SELECT * FROM {} WHERE archived_at IS NULL AND ",
+                resource_name
+            );
             for (i, field) in fields.iter().enumerate() {
-                query.push_str(&format!("AND {} = ${}", field, i + 1));
+                query.push_str(&format!("{} = ${}", field, i + 1));
+                if i < fields.len() - 1 {
+                    query.push_str(" AND ");
+                }
             }
 
             let mut query = sqlx::query(&query);
@@ -89,11 +95,14 @@ macro_rules! find_all_archived_resources_where_fields {
                 .collect::<Vec<String>>();
             let values = $params.iter().map(|field| &field.1).collect::<Vec<_>>();
             let mut query = format!(
-                "SELECT * FROM {} WHERE archived_at IS NOT NULL ",
+                "SELECT * FROM {} WHERE archived_at IS NOT NULL AND ",
                 resource_name
             );
             for (i, field) in fields.iter().enumerate() {
-                query.push_str(&format!("AND {} = ${}", field, i + 1));
+                query.push_str(&format!("{} = ${}", field, i + 1));
+                if i < fields.len() - 1 {
+                    query.push_str(" AND ");
+                }
             }
 
             let mut query = sqlx::query(&query);
@@ -162,9 +171,15 @@ macro_rules! find_one_unarchived_resource_where_fields {
                 .map(|field| field.0.to_string())
                 .collect::<Vec<String>>();
             let values = $params.iter().map(|field| &field.1).collect::<Vec<_>>();
-            let mut query = format!("SELECT * FROM {} WHERE archived_at IS NULL ", resource_name);
+            let mut query = format!(
+                "SELECT * FROM {} WHERE archived_at IS NULL AND ",
+                resource_name
+            );
             for (i, field) in fields.iter().enumerate() {
-                query.push_str(&format!("AND {} = ${}", field, i + 1));
+                query.push_str(&format!("{} = ${}", field, i + 1));
+                if i < fields.len() - 1 {
+                    query.push_str(" AND ");
+                }
             }
             query.push_str(" LIMIT 1");
 
@@ -206,6 +221,7 @@ macro_rules! find_one_archived_resource_where_fields {
                     query.push_str(" AND ");
                 }
             }
+            query.push_str(" LIMIT 1");
 
             let mut query = sqlx::query(&query);
             for (_, value) in $params.iter().enumerate() {

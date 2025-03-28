@@ -57,10 +57,3 @@ macro_rules! delete_resource_where_fields {
         }
     }};
 }
-
-#[macro_export]
-macro_rules! delete_resource {
-    ($resource:expr, $id:expr) => {
-        delete_resource_where_fields!($resource, vec![("id", $id)]).await
-    };
-}

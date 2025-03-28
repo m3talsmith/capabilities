@@ -104,7 +104,6 @@ pub async fn login(authentication_request: Json<AuthenticationRequest>) -> statu
     match find_one_unarchived_resource_where_fields!(Authentication, auth_params).await {
         Ok(authentication) => {
             let id = DatabaseValue::String(authentication.id.clone());
-            println!("Updating authentication: {:?}", id);
             match update_resource!(Authentication, id, vec![]).await {
                 Ok(_) => status::Custom(
                     Status::Ok,

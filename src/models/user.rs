@@ -33,10 +33,6 @@ pub struct User {
     pub last_name: Option<String>,
     pub username: Option<String>,
 
-    #[allow(dead_code)]
-    #[serde(skip_serializing, skip_deserializing)]
-    pub password: Option<String>,
-
     #[serde(
         serialize_with = "serialize_offset_date_time",
         deserialize_with = "deserialize_offset_date_time"
@@ -63,7 +59,6 @@ impl DatabaseResource for User {
             first_name: row.get("first_name"),
             last_name: row.get("last_name"),
             username: row.get("username"),
-            password: row.get("password_hash"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
             archived_at: row.get("archived_at"),
