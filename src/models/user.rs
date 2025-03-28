@@ -5,6 +5,27 @@ use sqlx::{postgres::PgRow, Error, Row};
 use time::OffsetDateTime;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum UserError {
+    UserNotFound,
+    UserCreationFailed,
+    UserUpdateFailed,
+    UserDeletionFailed,
+}
+
+impl std::fmt::Display for UserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserError::UserNotFound => write!(f, "User not found"),
+            UserError::UserCreationFailed => write!(f, "User creation failed"),
+            UserError::UserUpdateFailed => write!(f, "User update failed"),
+            UserError::UserDeletionFailed => write!(f, "User deletion failed"),
+        }
+    }
+}
+
+impl std::error::Error for UserError {}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub id: Option<String>,

@@ -28,6 +28,7 @@ async fn main() -> anyhow::Result<()> {
                 api::authentications::login,
                 api::authentications::logout,
                 api::authentications::register,
+                api::authentications::unregister,
             ],
         )
         .launch()

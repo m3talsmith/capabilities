@@ -16,19 +16,19 @@ macro_rules! update_resource {
             let resource_name = pluralize(&stringify!($resource).to_lowercase(), 2, false);
             let pool = get_connection().await;
 
-            let mut params: Vec<(String, DatabaseValue)> = Vec::new();
+            let mut params: Vec<(&str, DatabaseValue)> = Vec::new();
 
-            let input_params: Vec<(String, DatabaseValue)> = $params;
+            let input_params: Vec<(&str, DatabaseValue)> = $params;
             if !input_params.is_empty() {
                 for (field, value) in input_params {
                     params.push((field, value.clone()));
                 }
             }
             if <$resource as DatabaseResource>::is_updatable() {
-                params.push(("updated_at".to_string(), DatabaseValue::String(updated_at)));
+                params.push(("updated_at", DatabaseValue::String(updated_at)));
             }
             if <$resource as DatabaseResource>::is_expirable() {
-                params.push(("expires_at".to_string(), DatabaseValue::String(expires_at)));
+                params.push(("expires_at", DatabaseValue::String(expires_at)));
             }
 
             let fields = params
@@ -41,7 +41,9 @@ macro_rules! update_resource {
             for (i, field) in fields.iter().enumerate() {
                 match field.contains("_at") {
                     true => query.push_str(&format!("{} = CAST(${} AS TIMESTAMP)", field, i + 1)),
-                    _ => query.push_str(&format!("{} = ${}", field, i + 1)),
+                    _ => {
+                        query.push_str(&format!("{} = ${}", field, i + 1));
+                    }
                 }
                 if i < fields.len() - 1 {
                     query.push_str(", ");
@@ -52,7 +54,10 @@ macro_rules! update_resource {
 
             let mut query = sqlx::query(&query);
             for (_, value) in values.iter().enumerate() {
-                query = query.bind(value);
+                match value {
+                    DatabaseValue::None => query = query.bind(Option::<String>::None),
+                    _ => query = query.bind(value),
+                }
             }
             query = query.bind(&$id);
 

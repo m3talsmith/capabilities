@@ -1,9 +1,11 @@
 use crate::api::token::{RawToken, VerifiedToken};
 use crate::database::values::DatabaseValue;
 use crate::models::authentication::{Authentication, AuthenticationError};
-use crate::models::user::User;
+use crate::models::user::{User, UserError};
 use crate::{
-    delete_resource_where_fields, find_one_resource_where_fields, insert_resource, update_resource,
+    delete_resource_where_fields, find_one_archived_resource_where_fields,
+    find_one_resource_where_fields, find_one_unarchived_resource_where_fields, insert_resource,
+    update_resource,
 };
 use rocket::http::Status;
 use rocket::response::status;
@@ -14,8 +16,14 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum ResponseError {
+    Authentication(AuthenticationError),
+    User(UserError),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AuthenticationResponse {
-    pub error: Option<AuthenticationError>,
+    pub error: Option<ResponseError>,
     pub message: Option<String>,
     pub data: Option<Value>,
 }
@@ -24,17 +32,29 @@ impl AuthenticationResponse {
     pub fn success(data: Value, message: Option<String>) -> Self {
         Self {
             error: None,
-            message: message,
+            message,
             data: Some(data),
         }
     }
 
-    pub fn error(error: AuthenticationError, message: String) -> Self {
+    pub fn error(error: impl Into<ResponseError>, message: String) -> Self {
         Self {
-            error: Some(error),
+            error: Some(error.into()),
             message: Some(message),
             data: None,
         }
+    }
+}
+
+impl From<AuthenticationError> for ResponseError {
+    fn from(error: AuthenticationError) -> Self {
+        ResponseError::Authentication(error)
+    }
+}
+
+impl From<UserError> for ResponseError {
+    fn from(error: UserError) -> Self {
+        ResponseError::User(error)
     }
 }
 
@@ -63,24 +83,25 @@ pub async fn login(authentication_request: Json<AuthenticationRequest>) -> statu
     let password = DatabaseValue::String(hashed_password);
 
     let login_params = vec![("username", &username), ("password_hash", &password)];
-    let user = match find_one_resource_where_fields!(User, login_params).await {
+    let user = match find_one_unarchived_resource_where_fields!(User, login_params).await {
         Ok(user) => user,
-        Err(_) => {
+        Err(err) => {
+            println!("Error finding user: {:?}", err);
             return status::Custom(
                 Status::NotFound,
                 serde_json::to_value(AuthenticationResponse::error(
-                    AuthenticationError::UserNotFound,
-                    AuthenticationError::UserNotFound.to_string(),
+                    UserError::UserNotFound,
+                    UserError::UserNotFound.to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         }
     };
 
     let user_id = user.id.unwrap();
 
     let auth_params = vec![("user_id", &user_id)];
-    match find_one_resource_where_fields!(Authentication, auth_params).await {
+    match find_one_unarchived_resource_where_fields!(Authentication, auth_params).await {
         Ok(authentication) => {
             let id = DatabaseValue::String(authentication.id.clone());
             println!("Updating authentication: {:?}", id);
@@ -94,7 +115,7 @@ pub async fn login(authentication_request: Json<AuthenticationRequest>) -> statu
                     .unwrap(),
                 ),
                 Err(err) => {
-                    println!("Error: {:?}", err);
+                    println!("Error updating authentication: {:?}", err);
                     return status::Custom(
                         Status::InternalServerError,
                         serde_json::to_value(AuthenticationResponse::error(
@@ -126,7 +147,7 @@ pub async fn login(authentication_request: Json<AuthenticationRequest>) -> statu
                     .unwrap(),
                 ),
                 Err(err) => {
-                    println!("Error: {:?}", err);
+                    println!("Error creating authentication: {:?}", err);
                     return status::Custom(
                         Status::InternalServerError,
                         serde_json::to_value(AuthenticationResponse::error(
@@ -155,7 +176,8 @@ pub async fn logout(token: RawToken) -> status::Custom<Value> {
     }
     let token_value = match VerifiedToken::from_raw(token).await {
         Ok(token) => token,
-        Err(_) => {
+        Err(err) => {
+            println!("Error verifying token: {:?}", err);
             return status::Custom(
                 Status::BadRequest,
                 serde_json::to_value(AuthenticationResponse::error(
@@ -163,7 +185,7 @@ pub async fn logout(token: RawToken) -> status::Custom<Value> {
                     AuthenticationError::InvalidToken.to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         }
     };
     let token_str = token_value.raw_token.unwrap().clone();
@@ -177,14 +199,17 @@ pub async fn logout(token: RawToken) -> status::Custom<Value> {
             ))
             .unwrap(),
         ),
-        Err(_) => status::Custom(
-            Status::InternalServerError,
-            serde_json::to_value(AuthenticationResponse::error(
-                AuthenticationError::SessionDeletionFailed,
-                AuthenticationError::SessionDeletionFailed.to_string(),
-            ))
-            .unwrap(),
-        ),
+        Err(err) => {
+            println!("Error deleting authentication: {:?}", err);
+            return status::Custom(
+                Status::InternalServerError,
+                serde_json::to_value(AuthenticationResponse::error(
+                    AuthenticationError::SessionDeletionFailed,
+                    AuthenticationError::SessionDeletionFailed.to_string(),
+                ))
+                .unwrap(),
+            );
+        }
     }
 }
 
@@ -196,6 +221,40 @@ pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom
     let last_name = DatabaseValue::String(register_request.last_name.clone());
     let username = DatabaseValue::String(register_request.username.clone());
     let password = DatabaseValue::String(hashed_password);
+
+    let user_params = vec![("username", &username), ("password_hash", &password)];
+    let _ = match find_one_archived_resource_where_fields!(User, user_params).await {
+        Ok(user) => {
+            let id = user.id.clone().unwrap();
+            let id_value = DatabaseValue::String(id);
+            let archived_at = DatabaseValue::None;
+
+            match update_resource!(User, id_value, vec![("archived_at", archived_at)]).await {
+                Ok(user) => {
+                    return status::Custom(
+                        Status::Ok,
+                        serde_json::to_value(AuthenticationResponse::success(
+                            serde_json::to_value(user).unwrap(),
+                            None,
+                        ))
+                        .unwrap(),
+                    )
+                }
+                Err(err) => {
+                    println!("Error updating user: {:?}", err);
+                    return status::Custom(
+                        Status::InternalServerError,
+                        serde_json::to_value(AuthenticationResponse::error(
+                            UserError::UserUpdateFailed,
+                            UserError::UserUpdateFailed.to_string(),
+                        ))
+                        .unwrap(),
+                    );
+                }
+            }
+        }
+        Err(_) => (),
+    };
 
     let register_params = vec![
         ("first_name", first_name),
@@ -213,12 +272,85 @@ pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom
             .unwrap(),
         ),
         Err(err) => {
-            println!("Error: {:?}", err);
-            status::Custom(
+            println!("Error registering user: {:?}", err);
+            return status::Custom(
                 Status::InternalServerError,
                 serde_json::to_value(AuthenticationResponse::error(
                     AuthenticationError::RegistrationFailed,
                     AuthenticationError::RegistrationFailed.to_string(),
+                ))
+                .unwrap(),
+            );
+        }
+    }
+}
+
+#[delete("/register")]
+pub async fn unregister(token: RawToken) -> status::Custom<Value> {
+    let token_value = match VerifiedToken::from_raw(token).await {
+        Ok(token) => token,
+        Err(_) => {
+            return status::Custom(
+                Status::BadRequest,
+                serde_json::to_value(AuthenticationResponse::error(
+                    AuthenticationError::InvalidToken,
+                    AuthenticationError::InvalidToken.to_string(),
+                ))
+                .unwrap(),
+            );
+        }
+    };
+    let user_id = token_value.user_id.clone();
+
+    let user_params = vec![("id", &user_id)];
+    let _ = match find_one_resource_where_fields!(User, user_params).await {
+        Ok(user) => user,
+        Err(err) => {
+            println!("Error finding user: {:?}", err);
+            return status::Custom(
+                Status::NotFound,
+                serde_json::to_value(AuthenticationResponse::error(
+                    UserError::UserNotFound,
+                    UserError::UserNotFound.to_string(),
+                ))
+                .unwrap(),
+            );
+        }
+    };
+
+    let auth_params = vec![("user_id", &user_id)];
+    let _ = match delete_resource_where_fields!(Authentication, auth_params).await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error deleting authentication: {:?}", err);
+            return status::Custom(
+                Status::NotFound,
+                serde_json::to_value(AuthenticationResponse::error(
+                    AuthenticationError::SessionNotFound,
+                    AuthenticationError::SessionNotFound.to_string(),
+                ))
+                .unwrap(),
+            );
+        }
+    };
+
+    let delete_params = vec![("id", &user_id)];
+    match delete_resource_where_fields!(User, delete_params).await {
+        Ok(_) => status::Custom(
+            Status::Ok,
+            serde_json::to_value(AuthenticationResponse::success(
+                serde_json::json!(null),
+                Some("User deleted successfully".to_string()),
+            ))
+            .unwrap(),
+        ),
+        Err(err) => {
+            println!("Error deleting user: {:?}", err);
+            status::Custom(
+                Status::InternalServerError,
+                serde_json::to_value(AuthenticationResponse::error(
+                    UserError::UserDeletionFailed,
+                    UserError::UserDeletionFailed.to_string(),
                 ))
                 .unwrap(),
             )
