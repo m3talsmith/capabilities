@@ -31,12 +31,22 @@ macro_rules! update_resource {
                 }
             }
             if <$resource as DatabaseResource>::is_updatable() {
-                if !params.iter().any(|(field, _)| field.contains("updated_at")) {
+                if let Some(idx) = params
+                    .iter()
+                    .position(|(field, _)| field.contains("updated_at"))
+                {
+                    params[idx] = ("updated_at", DatabaseValue::DateTime(updated_at));
+                } else {
                     params.push(("updated_at", DatabaseValue::DateTime(updated_at)));
                 }
             }
             if <$resource as DatabaseResource>::is_expirable() {
-                if !params.iter().any(|(field, _)| field.contains("expires_at")) {
+                if let Some(idx) = params
+                    .iter()
+                    .position(|(field, _)| field.contains("expires_at"))
+                {
+                    params[idx] = ("expires_at", DatabaseValue::DateTime(expires_at));
+                } else {
                     params.push(("expires_at", DatabaseValue::DateTime(expires_at)));
                 }
             }

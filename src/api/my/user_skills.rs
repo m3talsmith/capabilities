@@ -115,7 +115,7 @@ pub async fn get_user_skills(token: RawToken) -> status::Custom<Value> {
             Status::Ok,
             serde_json::to_value(UserSkillsResponse::success(
                 serde_json::to_value(user_skills).unwrap(),
-                None,
+                Some("User skills fetched successfully".to_string()),
             ))
             .unwrap(),
         ),
@@ -217,7 +217,7 @@ pub async fn create_user_skill(
 #[put("/<user_skill_id>", data = "<user_skill>")]
 pub async fn update_user_skill(
     token: RawToken,
-    user_skill_id: String,
+    user_skill_id: &str,
     user_skill: Json<UserSkill>,
 ) -> status::Custom<Value> {
     if token.value.is_empty() {
@@ -264,7 +264,7 @@ pub async fn update_user_skill(
     };
 
     let user_id = DatabaseValue::String(user.id.unwrap());
-    let skill_id = DatabaseValue::String(user_skill_id.clone());
+    let skill_id = DatabaseValue::String(user_skill_id.to_string());
     let skill_name = DatabaseValue::String(user_skill.skill_name.clone().unwrap().to_lowercase());
     let skill_level = DatabaseValue::Int(user_skill.skill_level.unwrap().to_string());
 

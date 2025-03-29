@@ -33,7 +33,15 @@ macro_rules! insert_resource {
                 params.push(("id".to_string(), DatabaseValue::String(id.clone())));
             }
             if <$resource as DatabaseResource>::is_creatable() {
-                if !params.iter().any(|(field, _)| field.contains("created_at")) {
+                if let Some(idx) = params
+                    .iter()
+                    .position(|(field, _)| field.contains("created_at"))
+                {
+                    params[idx] = (
+                        "created_at".to_string(),
+                        DatabaseValue::DateTime(created_at),
+                    );
+                } else {
                     params.push((
                         "created_at".to_string(),
                         DatabaseValue::DateTime(created_at),
@@ -41,7 +49,15 @@ macro_rules! insert_resource {
                 }
             }
             if <$resource as DatabaseResource>::is_updatable() {
-                if !params.iter().any(|(field, _)| field.contains("updated_at")) {
+                if let Some(idx) = params
+                    .iter()
+                    .position(|(field, _)| field.contains("updated_at"))
+                {
+                    params[idx] = (
+                        "updated_at".to_string(),
+                        DatabaseValue::DateTime(updated_at),
+                    );
+                } else {
                     params.push((
                         "updated_at".to_string(),
                         DatabaseValue::DateTime(updated_at),
@@ -49,7 +65,15 @@ macro_rules! insert_resource {
                 }
             }
             if <$resource as DatabaseResource>::is_expirable() {
-                if !params.iter().any(|(field, _)| field.contains("expires_at")) {
+                if let Some(idx) = params
+                    .iter()
+                    .position(|(field, _)| field.contains("expires_at"))
+                {
+                    params[idx] = (
+                        "expires_at".to_string(),
+                        DatabaseValue::DateTime(expires_at),
+                    );
+                } else {
                     params.push((
                         "expires_at".to_string(),
                         DatabaseValue::DateTime(expires_at),
