@@ -31,6 +31,15 @@ async fn main() -> anyhow::Result<()> {
                 api::authentications::unregister,
             ],
         )
+        .mount(
+            "/api/my/skills",
+            routes![
+                api::my::user_skills::get_user_skills,
+                api::my::user_skills::create_user_skill,
+                api::my::user_skills::update_user_skill,
+                api::my::user_skills::delete_user_skill,
+            ],
+        )
         .launch()
         .await?;
     Ok(())

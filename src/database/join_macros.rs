@@ -2,13 +2,14 @@
 macro_rules! join_all_resources_where_fields_on {
     ($resource:ty, $join_resource:ty, $params:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
+        use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
 
         async {
-            let resource_name = stringify!($resource).to_lowercase();
+            let resource_name = camel_to_snake_case(stringify!($resource));
             let resource_table_name = pluralize(&resource_name, 2, false);
             let resource_join_name = format!("{}_id", resource_table_name);
-            let join_resource_name = stringify!($join_resource).to_lowercase();
+            let join_resource_name = camel_to_snake_case(stringify!($join_resource));
             let join_resource_table_name = pluralize(&join_resource_name, 2, false);
             let join_resource_join_name = format!("{}_id", join_resource_table_name);
             let pool = get_connection().await;

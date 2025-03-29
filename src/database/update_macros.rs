@@ -4,6 +4,8 @@ macro_rules! update_resource {
         use crate::database::{
             connection::get_connection, traits::DatabaseResource, values::DatabaseValue,
         };
+        use crate::find_one_resource_where_fields;
+        use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
         use time::{format_description::well_known::Iso8601, Duration, OffsetDateTime};
 
@@ -13,7 +15,11 @@ macro_rules! update_resource {
                 .format(&Iso8601::DEFAULT)
                 .unwrap();
 
-            let resource_name = pluralize(&stringify!($resource).to_lowercase(), 2, false);
+            let resource_name = pluralize(
+                camel_to_snake_case(stringify!($resource).to_string()).as_str(),
+                2,
+                false,
+            );
             let pool = get_connection().await;
 
             let mut params: Vec<(&str, DatabaseValue)> = Vec::new();

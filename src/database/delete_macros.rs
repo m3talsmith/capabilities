@@ -4,13 +4,18 @@ macro_rules! delete_resource_where_fields {
         use crate::database::connection::get_connection;
         use crate::database::traits::DatabaseResource;
         use crate::database::values::DatabaseValue;
+        use crate::utils::strings::camel_to_snake_case;
         use anyhow::anyhow;
         use pluralizer::pluralize;
         use time::OffsetDateTime;
         async {
             let archived_at = OffsetDateTime::now_utc();
 
-            let resource_name = pluralize(&stringify!($resource).to_lowercase(), 2, false);
+            let resource_name = pluralize(
+                camel_to_snake_case(stringify!($resource).to_string()).as_str(),
+                2,
+                false,
+            );
             let pool = get_connection().await;
 
             let params = $params.clone();

@@ -4,17 +4,25 @@ macro_rules! find_all_resources_where_fields {
         use crate::database::{
             connection::get_connection, traits::DatabaseResource, values::DatabaseValue,
         };
+        use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
 
         async {
-            let resource_name = pluralize(&stringify!($resource).to_lowercase(), 2, false);
+            let resource_name = pluralize(
+                camel_to_snake_case(stringify!($resource).to_string()).as_str(),
+                2,
+                false,
+            );
             let pool = get_connection().await;
 
             let fields = $params
                 .iter()
-                .map(|field| field.0.clone())
+                .map(|field| field.0.to_string())
+                .collect::<Vec<String>>();
+            let values = $params
+                .iter()
+                .map(|field| field.1.clone())
                 .collect::<Vec<DatabaseValue>>();
-            let values = $params.iter().map(|field| &field.1).collect::<Vec<_>>();
             let mut query = format!("SELECT * FROM {} WHERE ", resource_name);
             for (i, field) in fields.iter().enumerate() {
                 query.push_str(&format!("{} = ${}", field, i + 1));
@@ -24,7 +32,7 @@ macro_rules! find_all_resources_where_fields {
             }
 
             let mut query = sqlx::query(&query);
-            for (_, value) in values.iter().enumerate() {
+            for value in values.iter() {
                 query = query.bind(value);
             }
             match query.fetch_all(&pool).await {
@@ -42,10 +50,15 @@ macro_rules! find_all_resources_where_fields {
 macro_rules! find_all_unarchived_resources_where_fields {
     ($resource:ty, $params:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
+        use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
 
         async {
-            let resource_name = pluralize(&stringify!($resource).to_lowercase(), 2, false);
+            let resource_name = pluralize(
+                camel_to_snake_case(stringify!($resource).to_string()).as_str(),
+                2,
+                false,
+            );
             let pool = get_connection().await;
 
             let fields = $params
@@ -83,10 +96,15 @@ macro_rules! find_all_unarchived_resources_where_fields {
 macro_rules! find_all_archived_resources_where_fields {
     ($resource:ty, $params:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
+        use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
 
         async {
-            let resource_name = pluralize(&stringify!($resource).to_lowercase(), 2, false);
+            let resource_name = pluralize(
+                camel_to_snake_case(stringify!($resource).to_string()).as_str(),
+                2,
+                false,
+            );
             let pool = get_connection().await;
 
             let fields = $params
@@ -124,10 +142,15 @@ macro_rules! find_all_archived_resources_where_fields {
 macro_rules! find_one_resource_where_fields {
     ($resource:ty, $params:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
+        use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
 
         async {
-            let resource_name = pluralize(&stringify!($resource).to_lowercase(), 2, false);
+            let resource_name = pluralize(
+                camel_to_snake_case(stringify!($resource).to_string()).as_str(),
+                2,
+                false,
+            );
             let pool = get_connection().await;
 
             let fields = $params
@@ -160,10 +183,15 @@ macro_rules! find_one_resource_where_fields {
 macro_rules! find_one_unarchived_resource_where_fields {
     ($resource:ty, $params:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
+        use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
 
         async {
-            let resource_name = pluralize(&stringify!($resource).to_lowercase(), 2, false);
+            let resource_name = pluralize(
+                camel_to_snake_case(stringify!($resource).to_string()).as_str(),
+                2,
+                false,
+            );
             let pool = get_connection().await;
 
             let fields = $params
@@ -199,10 +227,15 @@ macro_rules! find_one_unarchived_resource_where_fields {
 macro_rules! find_one_archived_resource_where_fields {
     ($resource:ty, $params:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
+        use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
 
         async {
-            let resource_name = pluralize(&stringify!($resource).to_lowercase(), 2, false);
+            let resource_name = pluralize(
+                camel_to_snake_case(stringify!($resource).to_string()).as_str(),
+                2,
+                false,
+            );
             let pool = get_connection().await;
 
             let mut query = format!(
