@@ -40,6 +40,14 @@ async fn main() -> anyhow::Result<()> {
                 api::my::user_skills::delete_user_skill,
             ],
         )
+        .mount(
+            "/api/my/user",
+            routes![
+                api::my::user::get_user,
+                api::my::user::update_user,
+                api::my::user::change_password,
+            ],
+        )
         .launch()
         .await?;
     Ok(())
