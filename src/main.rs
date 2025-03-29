@@ -48,6 +48,13 @@ async fn main() -> anyhow::Result<()> {
                 api::my::user::change_password,
             ],
         )
+        .mount(
+            "/api/my/backup-codes",
+            routes![
+                api::my::backup_codes::get_backup_codes,
+                api::my::backup_codes::regenerate_backup_codes,
+            ],
+        )
         .launch()
         .await?;
     Ok(())

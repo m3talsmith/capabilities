@@ -1,7 +1,10 @@
 use crate::api::token::{RawToken, VerifiedToken};
 use crate::database::values::DatabaseValue;
 use crate::models::authentication::{Authentication, AuthenticationError};
+use crate::models::backup_code::{BackupCode, BackupCodeError};
 use crate::models::user::{User, UserError};
+use crate::utils::backup_codes::generate_backup_codes;
+use crate::utils::passwords::hash_password;
 use crate::{
     delete_resource_where_fields, find_one_archived_resource_where_fields,
     find_one_resource_where_fields, find_one_unarchived_resource_where_fields, insert_resource,
@@ -12,13 +15,13 @@ use rocket::response::status;
 use rocket::serde::json::Json;
 use rocket::serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ResponseError {
     Authentication(AuthenticationError),
     User(UserError),
+    BackupCode(BackupCodeError),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -58,6 +61,12 @@ impl From<UserError> for ResponseError {
     }
 }
 
+impl From<BackupCodeError> for ResponseError {
+    fn from(error: BackupCodeError) -> Self {
+        ResponseError::BackupCode(error)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthenticationRequest {
     pub username: String,
@@ -66,10 +75,7 @@ pub struct AuthenticationRequest {
 
 #[post("/", data = "<authentication_request>")]
 pub async fn login(authentication_request: Json<AuthenticationRequest>) -> status::Custom<Value> {
-    let hashed_password = format!(
-        "{:x}",
-        Sha256::digest(authentication_request.password.as_bytes())
-    );
+    let hashed_password = hash_password(&authentication_request.password);
 
     let username = DatabaseValue::String(authentication_request.username.clone());
     let password = DatabaseValue::String(hashed_password);
@@ -209,24 +215,55 @@ pub struct RegisterRequest {
     pub last_name: String,
     pub username: String,
     pub password: String,
-    pub email: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResponseBackupCode {
+    pub code: Option<String>,
+    pub user_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RegisterResponse {
+    pub data: Option<Value>,
+    pub message: Option<String>,
+    pub error: Option<ResponseError>,
+}
+
+impl RegisterResponse {
+    pub fn success(data: Value, message: Option<String>) -> Self {
+        Self {
+            data: Some(data),
+            message,
+            error: None,
+        }
+    }
+
+    pub fn error(error: impl Into<ResponseError>, message: String) -> Self {
+        Self {
+            data: None,
+            message: Some(message),
+            error: Some(error.into()),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResponseUser {
+    pub user: User,
+    pub backup_codes: Vec<String>,
 }
 
 #[post("/register", data = "<register_request>")]
 pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom<Value> {
-    let hashed_password = format!("{:x}", Sha256::digest(register_request.password.as_bytes()));
+    let hashed_password = hash_password(&register_request.password);
 
     let first_name = DatabaseValue::String(register_request.first_name.clone());
     let last_name = DatabaseValue::String(register_request.last_name.clone());
     let username = DatabaseValue::String(register_request.username.clone());
-    let email = DatabaseValue::String(register_request.email.clone());
     let password = DatabaseValue::String(hashed_password);
 
-    let user_params = vec![
-        ("username", &username),
-        ("password_hash", &password),
-        ("email", &email),
-    ];
+    let user_params = vec![("username", &username), ("password_hash", &password)];
     let _ = match find_one_archived_resource_where_fields!(User, user_params).await {
         Ok(user) => {
             let id = user.id.clone().unwrap();
@@ -248,7 +285,7 @@ pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom
                     println!("Error updating user: {:?}", err);
                     return status::Custom(
                         Status::InternalServerError,
-                        serde_json::to_value(AuthenticationResponse::error(
+                        serde_json::to_value(RegisterResponse::error(
                             UserError::UserUpdateFailed,
                             UserError::UserUpdateFailed.to_string(),
                         ))
@@ -265,29 +302,60 @@ pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom
         ("last_name", last_name),
         ("username", username),
         ("password_hash", password),
-        ("email", email),
     ];
-    match insert_resource!(User, register_params).await {
-        Ok(user) => status::Custom(
-            Status::Ok,
-            serde_json::to_value(AuthenticationResponse::success(
-                serde_json::to_value(user).unwrap(),
-                None,
-            ))
-            .unwrap(),
-        ),
+    let user = match insert_resource!(User, register_params).await {
+        Ok(user) => user,
         Err(err) => {
             println!("Error registering user: {:?}", err);
             return status::Custom(
                 Status::InternalServerError,
-                serde_json::to_value(AuthenticationResponse::error(
-                    AuthenticationError::RegistrationFailed,
-                    AuthenticationError::RegistrationFailed.to_string(),
+                serde_json::to_value(RegisterResponse::error(
+                    UserError::UserCreationFailed,
+                    UserError::UserCreationFailed.to_string(),
                 ))
                 .unwrap(),
             );
         }
+    };
+
+    let backup_codes = generate_backup_codes().await;
+    let user_id = user.id.clone().unwrap();
+    let user_response = user.clone();
+    let response_codes = backup_codes.clone();
+
+    for code in backup_codes {
+        let backup_code_params = vec![
+            ("code", DatabaseValue::String(code)),
+            ("user_id", DatabaseValue::String(user_id.clone())),
+        ];
+        let _ = match insert_resource!(BackupCode, backup_code_params).await {
+            Ok(_) => (),
+            Err(err) => {
+                println!("Error inserting backup code: {:?}", err);
+                return status::Custom(
+                    Status::InternalServerError,
+                    serde_json::to_value(RegisterResponse::error(
+                        BackupCodeError::CodeCreationFailed,
+                        BackupCodeError::CodeCreationFailed.to_string(),
+                    ))
+                    .unwrap(),
+                );
+            }
+        };
     }
+
+    status::Custom(
+        Status::Ok,
+        serde_json::to_value(RegisterResponse::success(
+            serde_json::to_value(ResponseUser {
+                user: user_response,
+                backup_codes: response_codes,
+            })
+            .unwrap(),
+            Some("User registered successfully".to_string()),
+        ))
+        .unwrap(),
+    )
 }
 
 #[delete("/register")]
@@ -317,6 +385,22 @@ pub async fn unregister(token: RawToken) -> status::Custom<Value> {
                 serde_json::to_value(AuthenticationResponse::error(
                     UserError::UserNotFound,
                     UserError::UserNotFound.to_string(),
+                ))
+                .unwrap(),
+            );
+        }
+    };
+
+    let codes_params = vec![("user_id", &user_id)];
+    let _ = match delete_resource_where_fields!(BackupCode, codes_params).await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error deleting backup codes: {:?}", err);
+            return status::Custom(
+                Status::InternalServerError,
+                serde_json::to_value(AuthenticationResponse::error(
+                    BackupCodeError::CodeDeletionFailed,
+                    BackupCodeError::CodeDeletionFailed.to_string(),
                 ))
                 .unwrap(),
             );

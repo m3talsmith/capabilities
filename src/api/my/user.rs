@@ -4,12 +4,12 @@ use crate::find_one_unarchived_resource_where_fields;
 use crate::models::authentication::AuthenticationError;
 use crate::models::user::{User, UserError};
 use crate::update_resource;
+use crate::utils::passwords::hash_password;
 use rocket::get;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket::serde::json::{Json, Value};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ResponseError {
@@ -61,7 +61,7 @@ pub async fn get_user(token: RawToken) -> rocket::response::status::Custom<Value
             Status::BadRequest,
             serde_json::to_value(UserResponse::error(
                 AuthenticationError::InvalidToken,
-                "Invalid token".to_string(),
+                AuthenticationError::InvalidToken.to_string(),
             ))
             .unwrap(),
         );
@@ -75,7 +75,7 @@ pub async fn get_user(token: RawToken) -> rocket::response::status::Custom<Value
                 Status::BadRequest,
                 serde_json::to_value(UserResponse::error(
                     AuthenticationError::InvalidToken,
-                    "Invalid token".to_string(),
+                    AuthenticationError::InvalidToken.to_string(),
                 ))
                 .unwrap(),
             );
@@ -199,7 +199,7 @@ pub struct UserChangePasswordRequest {
     pub new_password: String,
 }
 
-#[post("/", data = "<user_change_password_request>")]
+#[post("/change-password", data = "<user_change_password_request>")]
 pub async fn change_password(
     token: RawToken,
     user_change_password_request: Json<UserChangePasswordRequest>,
@@ -231,10 +231,7 @@ pub async fn change_password(
     };
 
     let user_id = DatabaseValue::String(token_value.user_id.clone());
-    let hashed_original_password = format!(
-        "{:x}",
-        Sha256::digest(user_change_password_request.old_password.as_bytes())
-    );
+    let hashed_original_password = hash_password(&user_change_password_request.old_password);
 
     let user_id_param = ("id", &user_id);
     let password_param = (
@@ -257,10 +254,7 @@ pub async fn change_password(
         }
     };
 
-    let hashed_new_password = format!(
-        "{:x}",
-        Sha256::digest(user_change_password_request.new_password.as_bytes())
-    );
+    let hashed_new_password = hash_password(&user_change_password_request.new_password);
 
     let user_params = vec![("password_hash", DatabaseValue::String(hashed_new_password))];
     match update_resource!(User, user_id, user_params).await {

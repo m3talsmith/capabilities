@@ -32,7 +32,6 @@ pub struct User {
     pub first_name: Option<String>,
     pub last_name: Option<String>,
     pub username: Option<String>,
-    pub email: Option<String>,
 
     #[serde(
         serialize_with = "serialize_offset_date_time",
@@ -60,7 +59,6 @@ impl DatabaseResource for User {
             first_name: row.get("first_name"),
             last_name: row.get("last_name"),
             username: row.get("username"),
-            email: row.get("email"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
             archived_at: row.get("archived_at"),
