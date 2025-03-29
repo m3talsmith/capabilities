@@ -64,14 +64,6 @@ pub struct AuthenticationRequest {
     pub password: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RegisterRequest {
-    pub first_name: String,
-    pub last_name: String,
-    pub username: String,
-    pub password: String,
-}
-
 #[post("/", data = "<authentication_request>")]
 pub async fn login(authentication_request: Json<AuthenticationRequest>) -> status::Custom<Value> {
     let hashed_password = format!(
@@ -211,6 +203,14 @@ pub async fn logout(token: RawToken) -> status::Custom<Value> {
         }
     }
 }
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RegisterRequest {
+    pub first_name: String,
+    pub last_name: String,
+    pub username: String,
+    pub password: String,
+    pub email: String,
+}
 
 #[post("/register", data = "<register_request>")]
 pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom<Value> {
@@ -219,9 +219,14 @@ pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom
     let first_name = DatabaseValue::String(register_request.first_name.clone());
     let last_name = DatabaseValue::String(register_request.last_name.clone());
     let username = DatabaseValue::String(register_request.username.clone());
+    let email = DatabaseValue::String(register_request.email.clone());
     let password = DatabaseValue::String(hashed_password);
 
-    let user_params = vec![("username", &username), ("password_hash", &password)];
+    let user_params = vec![
+        ("username", &username),
+        ("password_hash", &password),
+        ("email", &email),
+    ];
     let _ = match find_one_archived_resource_where_fields!(User, user_params).await {
         Ok(user) => {
             let id = user.id.clone().unwrap();
@@ -260,6 +265,7 @@ pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom
         ("last_name", last_name),
         ("username", username),
         ("password_hash", password),
+        ("email", email),
     ];
     match insert_resource!(User, register_params).await {
         Ok(user) => status::Custom(
