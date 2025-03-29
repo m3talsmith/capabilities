@@ -33,13 +33,28 @@ macro_rules! insert_resource {
                 params.push(("id".to_string(), DatabaseValue::String(id.clone())));
             }
             if <$resource as DatabaseResource>::is_creatable() {
-                params.push(("created_at".to_string(), DatabaseValue::String(created_at)));
+                if !params.iter().any(|(field, _)| field.contains("created_at")) {
+                    params.push((
+                        "created_at".to_string(),
+                        DatabaseValue::DateTime(created_at),
+                    ));
+                }
             }
             if <$resource as DatabaseResource>::is_updatable() {
-                params.push(("updated_at".to_string(), DatabaseValue::String(updated_at)));
+                if !params.iter().any(|(field, _)| field.contains("updated_at")) {
+                    params.push((
+                        "updated_at".to_string(),
+                        DatabaseValue::DateTime(updated_at),
+                    ));
+                }
             }
             if <$resource as DatabaseResource>::is_expirable() {
-                params.push(("expires_at".to_string(), DatabaseValue::String(expires_at)));
+                if !params.iter().any(|(field, _)| field.contains("expires_at")) {
+                    params.push((
+                        "expires_at".to_string(),
+                        DatabaseValue::DateTime(expires_at),
+                    ));
+                }
             }
 
             let fields: Vec<String> = params.iter().map(|(field, _)| field.clone()).collect();
@@ -55,10 +70,29 @@ macro_rules! insert_resource {
             }
 
             query.push_str(") VALUES (");
-            for (i, _) in values.iter().enumerate() {
-                match fields[i].contains("_at") {
-                    true => query.push_str(&format!("CAST(${} AS TIMESTAMP)", i + 1)),
-                    _ => query.push_str(&format!("${}", i + 1)),
+            for (i, value) in values.iter().enumerate() {
+                match value {
+                    DatabaseValue::None => {
+                        query.push_str("NULL");
+                    }
+                    DatabaseValue::Str(_) | DatabaseValue::String(_) => {
+                        query.push_str(&format!("${}", i + 1));
+                    }
+                    DatabaseValue::DateTime(_) => {
+                        query.push_str(&format!("CAST(${} AS TIMESTAMP)", i + 1));
+                    }
+                    DatabaseValue::Int(_) => {
+                        query.push_str(&format!("CAST(${} AS INTEGER)", i + 1));
+                    }
+                    DatabaseValue::Int64(_) => {
+                        query.push_str(&format!("CAST(${} AS BIGINT)", i + 1));
+                    }
+                    DatabaseValue::Float(_) => {
+                        query.push_str(&format!("CAST(${} AS FLOAT)", i + 1));
+                    }
+                    DatabaseValue::Boolean(_) => {
+                        query.push_str(&format!("CAST(${} AS BOOLEAN)", i + 1));
+                    }
                 }
                 if i < values.len() - 1 {
                     query.push_str(", ");

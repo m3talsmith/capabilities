@@ -31,10 +31,14 @@ macro_rules! update_resource {
                 }
             }
             if <$resource as DatabaseResource>::is_updatable() {
-                params.push(("updated_at", DatabaseValue::String(updated_at)));
+                if !params.iter().any(|(field, _)| field.contains("updated_at")) {
+                    params.push(("updated_at", DatabaseValue::DateTime(updated_at)));
+                }
             }
             if <$resource as DatabaseResource>::is_expirable() {
-                params.push(("expires_at", DatabaseValue::String(expires_at)));
+                if !params.iter().any(|(field, _)| field.contains("expires_at")) {
+                    params.push(("expires_at", DatabaseValue::DateTime(expires_at)));
+                }
             }
 
             let fields = params
@@ -45,10 +49,28 @@ macro_rules! update_resource {
 
             let mut query = format!("UPDATE {} SET ", resource_name);
             for (i, field) in fields.iter().enumerate() {
-                match field.contains("_at") {
-                    true => query.push_str(&format!("{} = CAST(${} AS TIMESTAMP)", field, i + 1)),
-                    _ => {
+                let value = values[i];
+                match value {
+                    DatabaseValue::None => {
+                        query.push_str(&format!("{} = NULL", field));
+                    }
+                    DatabaseValue::Str(_) | DatabaseValue::String(_) => {
                         query.push_str(&format!("{} = ${}", field, i + 1));
+                    }
+                    DatabaseValue::DateTime(_) => {
+                        query.push_str(&format!("{} = CAST(${} AS TIMESTAMP)", field, i + 1));
+                    }
+                    DatabaseValue::Int(_) => {
+                        query.push_str(&format!("{} = CAST(${} AS INTEGER)", field, i + 1));
+                    }
+                    DatabaseValue::Int64(_) => {
+                        query.push_str(&format!("{} = CAST(${} AS BIGINT)", field, i + 1));
+                    }
+                    DatabaseValue::Float(_) => {
+                        query.push_str(&format!("{} = CAST(${} AS FLOAT)", field, i + 1));
+                    }
+                    DatabaseValue::Boolean(_) => {
+                        query.push_str(&format!("{} = CAST(${} AS BOOLEAN)", field, i + 1));
                     }
                 }
                 if i < fields.len() - 1 {

@@ -2,6 +2,7 @@ use sqlx::postgres::PgArgumentBuffer;
 use sqlx::{encode::IsNull, error::BoxDynError, Encode, Postgres, Type};
 use std::fmt::{self, Display};
 use std::iter::FromIterator;
+use time::format_description::well_known::Iso8601;
 use time::OffsetDateTime;
 
 #[derive(Debug, Clone)]
@@ -13,15 +14,15 @@ pub enum DatabaseValue {
     #[allow(dead_code)]
     String(String),
     #[allow(dead_code)]
-    Int(i32),
+    Int(String),
     #[allow(dead_code)]
-    Int64(i64),
+    Int64(String),
     #[allow(dead_code)]
-    Float(f64),
+    Float(String),
     #[allow(dead_code)]
-    Boolean(bool),
+    Boolean(String),
     #[allow(dead_code)]
-    DateTime(OffsetDateTime),
+    DateTime(String),
 }
 
 impl Display for DatabaseValue {
@@ -67,5 +68,33 @@ impl FromIterator<String> for DatabaseValue {
 impl<'a> FromIterator<&'a String> for DatabaseValue {
     fn from_iter<I: IntoIterator<Item = &'a String>>(iter: I) -> Self {
         DatabaseValue::String(iter.into_iter().cloned().collect())
+    }
+}
+
+impl FromIterator<bool> for DatabaseValue {
+    fn from_iter<I: IntoIterator<Item = bool>>(iter: I) -> Self {
+        DatabaseValue::Boolean(iter.into_iter().map(|b| b.to_string()).collect())
+    }
+}
+
+impl FromIterator<OffsetDateTime> for DatabaseValue {
+    fn from_iter<I: IntoIterator<Item = OffsetDateTime>>(iter: I) -> Self {
+        DatabaseValue::DateTime(
+            iter.into_iter()
+                .map(|dt| dt.format(&Iso8601::DEFAULT).unwrap())
+                .collect(),
+        )
+    }
+}
+
+impl FromIterator<i64> for DatabaseValue {
+    fn from_iter<I: IntoIterator<Item = i64>>(iter: I) -> Self {
+        DatabaseValue::Int64(iter.into_iter().map(|i| i.to_string()).collect())
+    }
+}
+
+impl FromIterator<f64> for DatabaseValue {
+    fn from_iter<I: IntoIterator<Item = f64>>(iter: I) -> Self {
+        DatabaseValue::Float(iter.into_iter().map(|f| f.to_string()).collect())
     }
 }

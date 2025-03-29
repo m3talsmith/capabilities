@@ -5,8 +5,8 @@ CREATE TABLE
         user_id VARCHAR(255) NOT NULL REFERENCES users (id),
         skill_name VARCHAR(255) NOT NULL,
         skill_level INTEGER NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (user_id, skill_name),
         FOREIGN KEY (user_id) REFERENCES users (id)
     );
