@@ -86,6 +86,7 @@ async fn main() -> anyhow::Result<()> {
                 api::invitations::get_invitation,
             ],
         )
+        .mount("/api/users", routes![api::users::get_users])
         .launch()
         .await?;
     Ok(())
