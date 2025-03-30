@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgRow, Error as SqlxError, Row};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum AuthenticationError {
     UserNotFound,
     InvalidCredentials,

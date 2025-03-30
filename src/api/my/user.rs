@@ -1,4 +1,4 @@
-use crate::api::token::{RawToken, VerifiedToken};
+use crate::api::token::{validate_token, RawToken};
 use crate::database::values::DatabaseValue;
 use crate::find_one_unarchived_resource_where_fields;
 use crate::models::authentication::AuthenticationError;
@@ -56,23 +56,12 @@ impl UserResponse {
 
 #[get("/")]
 pub async fn get_user(token: RawToken) -> rocket::response::status::Custom<Value> {
-    if token.value.is_empty() {
-        return status::Custom(
-            Status::BadRequest,
-            serde_json::to_value(UserResponse::error(
-                AuthenticationError::InvalidToken,
-                AuthenticationError::InvalidToken.to_string(),
-            ))
-            .unwrap(),
-        );
-    }
-
-    let token_value = match VerifiedToken::from_raw(token).await {
+    let token_value = match validate_token(token).await {
         Ok(token) => token,
         Err(err) => {
-            println!("Error verifying token: {:?}", err);
+            println!("Error validating token: {:?}", err);
             return status::Custom(
-                Status::BadRequest,
+                Status::Unauthorized,
                 serde_json::to_value(UserResponse::error(
                     AuthenticationError::InvalidToken,
                     AuthenticationError::InvalidToken.to_string(),
@@ -112,26 +101,15 @@ pub async fn update_user(
     token: RawToken,
     user: Json<User>,
 ) -> rocket::response::status::Custom<Value> {
-    if token.value.is_empty() {
-        return status::Custom(
-            Status::BadRequest,
-            serde_json::to_value(UserResponse::error(
-                AuthenticationError::InvalidToken,
-                "Invalid token".to_string(),
-            ))
-            .unwrap(),
-        );
-    }
-
-    let token_value = match VerifiedToken::from_raw(token).await {
+    let token_value = match validate_token(token).await {
         Ok(token) => token,
         Err(err) => {
-            println!("Error verifying token: {:?}", err);
+            println!("Error validating token: {:?}", err);
             return status::Custom(
-                Status::BadRequest,
+                Status::Unauthorized,
                 serde_json::to_value(UserResponse::error(
                     AuthenticationError::InvalidToken,
-                    "Invalid token".to_string(),
+                    AuthenticationError::InvalidToken.to_string(),
                 ))
                 .unwrap(),
             );
@@ -204,26 +182,15 @@ pub async fn change_password(
     token: RawToken,
     user_change_password_request: Json<UserChangePasswordRequest>,
 ) -> rocket::response::status::Custom<Value> {
-    if token.value.is_empty() {
-        return status::Custom(
-            Status::BadRequest,
-            serde_json::to_value(UserResponse::error(
-                AuthenticationError::InvalidToken,
-                "Invalid token".to_string(),
-            ))
-            .unwrap(),
-        );
-    }
-
-    let token_value = match VerifiedToken::from_raw(token).await {
+    let token_value = match validate_token(token).await {
         Ok(token) => token,
         Err(err) => {
-            println!("Error verifying token: {:?}", err);
+            println!("Error validating token: {:?}", err);
             return status::Custom(
-                Status::BadRequest,
+                Status::Unauthorized,
                 serde_json::to_value(UserResponse::error(
                     AuthenticationError::InvalidToken,
-                    "Invalid token".to_string(),
+                    AuthenticationError::InvalidToken.to_string(),
                 ))
                 .unwrap(),
             );

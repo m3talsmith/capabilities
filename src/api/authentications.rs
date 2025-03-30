@@ -1,4 +1,4 @@
-use crate::api::token::{RawToken, VerifiedToken};
+use crate::api::token::{validate_token, RawToken};
 use crate::database::values::DatabaseValue;
 use crate::models::authentication::{Authentication, AuthenticationError};
 use crate::models::backup_code::{BackupCode, BackupCodeError};
@@ -161,30 +161,18 @@ pub async fn login(authentication_request: Json<AuthenticationRequest>) -> statu
 
 #[delete("/")]
 pub async fn logout(token: RawToken) -> status::Custom<Value> {
-    if token.value.is_empty() {
-        return status::Custom(
-            Status::BadRequest,
-            serde_json::to_value(AuthenticationResponse::error(
-                AuthenticationError::SessionNotFound,
-                AuthenticationError::SessionNotFound.to_string(),
-            ))
-            .unwrap(),
-        );
-    }
-    let token_value = match VerifiedToken::from_raw(token).await {
+    let token_value = match validate_token(token).await {
         Ok(token) => token,
         Err(err) => {
-            println!("Error verifying token: {:?}", err);
+            println!("Error validating token: {:?}", err);
             return status::Custom(
-                Status::BadRequest,
-                serde_json::to_value(AuthenticationResponse::error(
-                    AuthenticationError::InvalidToken,
-                    AuthenticationError::InvalidToken.to_string(),
-                ))
-                .unwrap(),
+                Status::Unauthorized,
+                serde_json::to_value(AuthenticationResponse::error(err.clone(), err.to_string()))
+                    .unwrap(),
             );
         }
     };
+
     let token_str = token_value.raw_token.unwrap().clone();
     let logout_params = vec![("token", &token_str)];
     match delete_resource_where_fields!(Authentication, logout_params).await {
@@ -360,7 +348,7 @@ pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom
 
 #[delete("/register")]
 pub async fn unregister(token: RawToken) -> status::Custom<Value> {
-    let token_value = match VerifiedToken::from_raw(token).await {
+    let token_value = match validate_token(token).await {
         Ok(token) => token,
         Err(_) => {
             return status::Custom(
@@ -373,6 +361,7 @@ pub async fn unregister(token: RawToken) -> status::Custom<Value> {
             );
         }
     };
+
     let user_id = token_value.user_id.clone();
 
     let user_params = vec![("id", &user_id)];

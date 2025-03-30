@@ -83,3 +83,18 @@ impl<'r> FromRequest<'r> for RawToken {
         )
     }
 }
+
+pub async fn validate_token(token: RawToken) -> Result<VerifiedToken, AuthenticationError> {
+    if token.value.is_empty() {
+        println!("Token is empty");
+        return Err(AuthenticationError::SessionNotFound);
+    }
+
+    match VerifiedToken::from_raw(token).await {
+        Ok(token) => Ok(token),
+        Err(err) => {
+            println!("Error verifying token: {:?}", err);
+            return Err(AuthenticationError::InvalidToken);
+        }
+    }
+}

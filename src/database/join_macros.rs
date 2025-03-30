@@ -6,12 +6,12 @@ macro_rules! join_all_resources_where_fields_on {
         use pluralizer::pluralize;
 
         async {
-            let resource_name = camel_to_snake_case(stringify!($resource));
+            let resource_name = camel_to_snake_case(stringify!($resource).to_string());
             let resource_table_name = pluralize(&resource_name, 2, false);
-            let resource_join_name = format!("{}_id", resource_table_name);
-            let join_resource_name = camel_to_snake_case(stringify!($join_resource));
+            let resource_join_name = format!("{}_id", resource_name);
+            let join_resource_name = camel_to_snake_case(stringify!($join_resource).to_string());
             let join_resource_table_name = pluralize(&join_resource_name, 2, false);
-            let join_resource_join_name = format!("{}_id", join_resource_table_name);
+            let join_resource_join_name = format!("{}_id", join_resource_name);
             let pool = get_connection().await;
 
             let fields = $params
@@ -32,10 +32,9 @@ macro_rules! join_all_resources_where_fields_on {
             );
             query.push_str(" WHERE ");
             for (i, field) in fields.iter().enumerate() {
+                query.push_str(&format!("{} = ${}", field, i + 1));
                 if i < fields.len() - 1 {
-                    query.push_str(&format!("{} = ${} AND ", field, i + 1));
-                } else {
-                    query.push_str(&format!("{} = ${}", field, i + 1));
+                    query.push_str(" AND ");
                 }
             }
 

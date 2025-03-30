@@ -55,6 +55,37 @@ async fn main() -> anyhow::Result<()> {
                 api::my::backup_codes::regenerate_backup_codes,
             ],
         )
+        .mount(
+            "/api/my/teams",
+            routes![
+                api::my::teams::get_teams,
+                api::my::teams::get_team,
+                api::my::teams::create_team,
+                api::my::teams::update_team,
+                api::my::teams::delete_team,
+                api::my::teams::create_invitation,
+            ],
+        )
+        .mount(
+            "/api/my/invitations",
+            routes![
+                api::my::invitations::get_invitations,
+                api::my::invitations::get_invitation,
+                api::my::invitations::accept_invitation,
+                api::my::invitations::reject_invitation,
+            ],
+        )
+        .mount(
+            "/api/teams",
+            routes![api::teams::get_teams, api::teams::get_team,],
+        )
+        .mount(
+            "/api/invitations",
+            routes![
+                api::invitations::get_invitations,
+                api::invitations::get_invitation,
+            ],
+        )
         .launch()
         .await?;
     Ok(())

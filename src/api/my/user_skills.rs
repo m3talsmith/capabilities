@@ -1,4 +1,4 @@
-use crate::api::token::{RawToken, VerifiedToken};
+use crate::api::token::{validate_token, RawToken};
 use crate::database::values::DatabaseValue;
 use crate::models::authentication::AuthenticationError;
 use crate::models::user::{User, UserError};
@@ -65,23 +65,12 @@ impl UserSkillsResponse {
 
 #[get("/")]
 pub async fn get_user_skills(token: RawToken) -> status::Custom<Value> {
-    if token.value.is_empty() {
-        return status::Custom(
-            Status::BadRequest,
-            serde_json::to_value(UserSkillsResponse::error(
-                AuthenticationError::SessionNotFound,
-                AuthenticationError::SessionNotFound.to_string(),
-            ))
-            .unwrap(),
-        );
-    }
-
-    let token_value = match VerifiedToken::from_raw(token).await {
+    let token_value = match validate_token(token).await {
         Ok(token) => token,
         Err(err) => {
-            println!("Error verifying token: {:?}", err);
+            println!("Error validating token: {:?}", err);
             return status::Custom(
-                Status::BadRequest,
+                Status::Unauthorized,
                 serde_json::to_value(UserSkillsResponse::error(
                     AuthenticationError::InvalidToken,
                     AuthenticationError::InvalidToken.to_string(),
@@ -138,23 +127,12 @@ pub async fn create_user_skill(
     token: RawToken,
     user_skill: Json<UserSkill>,
 ) -> status::Custom<Value> {
-    if token.value.is_empty() {
-        return status::Custom(
-            Status::BadRequest,
-            serde_json::to_value(UserSkillsResponse::error(
-                AuthenticationError::SessionNotFound,
-                AuthenticationError::SessionNotFound.to_string(),
-            ))
-            .unwrap(),
-        );
-    }
-
-    let token_value = match VerifiedToken::from_raw(token).await {
+    let token_value = match validate_token(token).await {
         Ok(token) => token,
         Err(err) => {
-            println!("Error verifying token: {:?}", err);
+            println!("Error validating token: {:?}", err);
             return status::Custom(
-                Status::BadRequest,
+                Status::Unauthorized,
                 serde_json::to_value(UserSkillsResponse::error(
                     AuthenticationError::InvalidToken,
                     AuthenticationError::InvalidToken.to_string(),
@@ -220,23 +198,12 @@ pub async fn update_user_skill(
     user_skill_id: &str,
     user_skill: Json<UserSkill>,
 ) -> status::Custom<Value> {
-    if token.value.is_empty() {
-        return status::Custom(
-            Status::BadRequest,
-            serde_json::to_value(UserSkillsResponse::error(
-                AuthenticationError::SessionNotFound,
-                AuthenticationError::SessionNotFound.to_string(),
-            ))
-            .unwrap(),
-        );
-    }
-
-    let token_value = match VerifiedToken::from_raw(token).await {
+    let token_value = match validate_token(token).await {
         Ok(token) => token,
         Err(err) => {
-            println!("Error verifying token: {:?}", err);
+            println!("Error validating token: {:?}", err);
             return status::Custom(
-                Status::BadRequest,
+                Status::Unauthorized,
                 serde_json::to_value(UserSkillsResponse::error(
                     AuthenticationError::InvalidToken,
                     AuthenticationError::InvalidToken.to_string(),
@@ -300,23 +267,12 @@ pub async fn update_user_skill(
 
 #[delete("/<user_skill_id>")]
 pub async fn delete_user_skill(token: RawToken, user_skill_id: String) -> status::Custom<Value> {
-    if token.value.is_empty() {
-        return status::Custom(
-            Status::BadRequest,
-            serde_json::to_value(UserSkillsResponse::error(
-                AuthenticationError::SessionNotFound,
-                AuthenticationError::SessionNotFound.to_string(),
-            ))
-            .unwrap(),
-        );
-    }
-
-    let token_value = match VerifiedToken::from_raw(token).await {
+    let token_value = match validate_token(token).await {
         Ok(token) => token,
         Err(err) => {
-            println!("Error verifying token: {:?}", err);
+            println!("Error validating token: {:?}", err);
             return status::Custom(
-                Status::BadRequest,
+                Status::Unauthorized,
                 serde_json::to_value(UserSkillsResponse::error(
                     AuthenticationError::InvalidToken,
                     AuthenticationError::InvalidToken.to_string(),
