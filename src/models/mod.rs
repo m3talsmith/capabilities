@@ -1,3 +1,4 @@
+pub mod activity;
 pub mod authentication;
 pub mod backup_code;
 pub mod invitation;
