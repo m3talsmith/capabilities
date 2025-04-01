@@ -1,11 +1,15 @@
 use crate::api::token::{validate_token, RawToken};
 use crate::database::values::DatabaseValue;
+use crate::models::activity::Activity;
 use crate::models::authentication::AuthenticationError;
+use crate::models::capability::Capability;
 use crate::models::invitation::{Invitation, InvitationError};
 use crate::models::team::{Team, TeamError};
 use crate::models::user::{User, UserError};
+use crate::models::user_skill::UserSkill;
 use crate::{
     find_all_unarchived_resources_where_fields, find_one_unarchived_resource_where_fields,
+    join_all_resources_where_fields_on,
 };
 use futures::future::try_join_all;
 use rocket::http::Status;
@@ -13,6 +17,7 @@ use rocket::response::status;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::Error;
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ResponseError {
@@ -174,6 +179,7 @@ pub struct InvitationResponse {
 pub struct TeamResponse {
     pub team: Team,
     pub invitations: Vec<InvitationResponse>,
+    pub capabilities: HashMap<String, Vec<Capability>>,
 }
 
 #[get("/<team_id>")]
@@ -297,8 +303,53 @@ async fn get_team_response(team_id: String) -> Result<TeamResponse, Error> {
         })
     });
     let invitations_response = try_join_all(invitation_responses).await.unwrap();
+
+    let activity_params = vec![("team_id", &team_id)];
+    let activities =
+        match find_all_unarchived_resources_where_fields!(Activity, activity_params).await {
+            Ok(activities) => activities,
+            Err(err) => {
+                println!("Error finding activities: {:?}", err);
+                return Err(err);
+            }
+        };
+
+    let mut capabilities: HashMap<String, Vec<Capability>> = HashMap::new();
+
+    let users_params = vec![("teams.team_id", &team_id)];
+    let users = join_all_resources_where_fields_on!(User, Team, users_params).await?;
+    for user in users {
+        let user_id = user.id.clone().unwrap();
+        let skills_params = vec![("user_id", DatabaseValue::String(user_id.clone()))];
+        let skills =
+            match find_all_unarchived_resources_where_fields!(UserSkill, skills_params).await {
+                Ok(skills) => skills,
+                Err(err) => {
+                    println!("Error finding skills: {:?}", err);
+                    return Err(err);
+                }
+            };
+
+        for skill in skills {
+            let skill_name = skill.skill_name.clone().unwrap().to_lowercase();
+            let capability = Capability {
+                user: user.clone(),
+                skill: skill_name.clone(),
+                level: skill.skill_level.unwrap(),
+                available: !activities
+                    .iter()
+                    .any(|activity| activity.assigned_to.clone().unwrap() == user_id),
+            };
+            capabilities
+                .entry(skill_name)
+                .or_insert(Vec::new())
+                .push(capability);
+        }
+    }
+
     Ok(TeamResponse {
         team,
         invitations: invitations_response,
+        capabilities,
     })
 }

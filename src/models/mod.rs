@@ -1,8 +1,10 @@
 pub mod activity;
 pub mod authentication;
 pub mod backup_code;
+pub mod capability;
 pub mod invitation;
 pub mod team;
 pub mod team_role;
+pub mod team_user;
 pub mod user;
 pub mod user_skill;

@@ -5,6 +5,7 @@ use crate::models::authentication::AuthenticationError;
 use crate::models::invitation::{Invitation, InvitationError};
 use crate::models::team::{Team, TeamError};
 use crate::models::team_role::TeamRole;
+use crate::models::team_user::TeamUser;
 use crate::models::user::{User, UserError};
 use crate::{
     delete_resource_where_fields, find_all_unarchived_resources_where_fields,
@@ -331,8 +332,31 @@ pub async fn create_team(
         }
     };
 
+    let team_id = team.id.clone().unwrap();
+    let team_user_params = vec![
+        ("team_id", DatabaseValue::String(team_id)),
+        (
+            "user_id",
+            DatabaseValue::String(token_value.user_id.clone()),
+        ),
+    ];
+    let _ = match insert_resource!(TeamUser, team_user_params).await {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error creating team user: {:?}", err);
+            return status::Custom(
+                Status::InternalServerError,
+                serde_json::to_value(TeamsResponse::error(
+                    TeamError::TeamCreationFailed,
+                    TeamError::TeamCreationFailed.to_string(),
+                ))
+                .unwrap(),
+            );
+        }
+    };
+
     let team_response = TeamsResponse::success(
-        serde_json::to_value(team).unwrap(),
+        serde_json::to_value(team.clone()).unwrap(),
         Some("Team created successfully".to_string()),
     );
 
