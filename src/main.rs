@@ -64,6 +64,16 @@ async fn main() -> anyhow::Result<()> {
                 api::my::teams::update_team,
                 api::my::teams::delete_team,
                 api::my::teams::create_invitation,
+                api::my::teams::get_team_activities,
+                api::my::teams::get_team_activity,
+                api::my::teams::create_team_activity,
+                api::my::teams::update_team_activity,
+                api::my::teams::delete_team_activity,
+                api::my::teams::assign_team_activity,
+                api::my::teams::pause_team_activity,
+                api::my::teams::resume_team_activity,
+                api::my::teams::unassign_team_activity,
+                api::my::teams::reopen_team_activity,
             ],
         )
         .mount(
@@ -87,6 +97,17 @@ async fn main() -> anyhow::Result<()> {
             ],
         )
         .mount("/api/users", routes![api::users::get_users])
+        .mount(
+            "/api/my/activities",
+            routes![
+                api::my::activities::get_activities,
+                api::my::activities::get_activity,
+                api::my::activities::complete_activity,
+                api::my::activities::pause_activity,
+                api::my::activities::resume_activity,
+                api::my::activities::reopen_activity,
+            ],
+        )
         .launch()
         .await?;
     Ok(())

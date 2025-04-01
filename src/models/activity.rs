@@ -18,6 +18,9 @@ pub enum ActivityError {
     ActivityDeletionError,
     ActivityUpdateError,
     ActivityCreationError,
+    ActivityCreationFailed,
+    ActivityUpdateFailed,
+    ActivityDeletionFailed,
 }
 
 impl std::fmt::Display for ActivityError {
@@ -33,6 +36,9 @@ impl std::fmt::Display for ActivityError {
             ActivityError::ActivityDeletionError => write!(f, "Activity deletion error"),
             ActivityError::ActivityUpdateError => write!(f, "Activity update error"),
             ActivityError::ActivityCreationError => write!(f, "Activity creation error"),
+            ActivityError::ActivityCreationFailed => write!(f, "Failed to create activity"),
+            ActivityError::ActivityUpdateFailed => write!(f, "Failed to update activity"),
+            ActivityError::ActivityDeletionFailed => write!(f, "Failed to delete activity"),
         }
     }
 }
