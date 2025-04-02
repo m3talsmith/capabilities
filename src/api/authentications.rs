@@ -244,8 +244,48 @@ pub struct ResponseUser {
 
 #[post("/register", data = "<register_request>")]
 pub async fn register(register_request: Json<RegisterRequest>) -> status::Custom<Value> {
-    let hashed_password = hash_password(&register_request.password);
+    if register_request.first_name.is_empty() {
+        return status::Custom(
+            Status::BadRequest,
+            serde_json::to_value(AuthenticationResponse::error(
+                AuthenticationError::InvalidRequest,
+                "Missing first name".to_string(),
+            ))
+            .unwrap(),
+        );
+    }
+    if register_request.last_name.is_empty() {
+        return status::Custom(
+            Status::BadRequest,
+            serde_json::to_value(AuthenticationResponse::error(
+                AuthenticationError::InvalidRequest,
+                "Missing last name".to_string(),
+            ))
+            .unwrap(),
+        );
+    }
+    if register_request.username.is_empty() {
+        return status::Custom(
+            Status::BadRequest,
+            serde_json::to_value(AuthenticationResponse::error(
+                AuthenticationError::InvalidRequest,
+                "Missing username".to_string(),
+            ))
+            .unwrap(),
+        );
+    }
+    if register_request.password.is_empty() {
+        return status::Custom(
+            Status::BadRequest,
+            serde_json::to_value(AuthenticationResponse::error(
+                AuthenticationError::InvalidRequest,
+                "Missing password".to_string(),
+            ))
+            .unwrap(),
+        );
+    }
 
+    let hashed_password = hash_password(&register_request.password);
     let first_name = DatabaseValue::String(register_request.first_name.clone());
     let last_name = DatabaseValue::String(register_request.last_name.clone());
     let username = DatabaseValue::String(register_request.username.clone());

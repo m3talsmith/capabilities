@@ -15,6 +15,7 @@ pub enum AuthenticationError {
     InvalidToken,
     TokenExpired,
     RegistrationFailed,
+    InvalidRequest,
 }
 
 impl std::fmt::Display for AuthenticationError {
@@ -29,6 +30,7 @@ impl std::fmt::Display for AuthenticationError {
             AuthenticationError::InvalidToken => write!(f, "Invalid token"),
             AuthenticationError::TokenExpired => write!(f, "Token expired"),
             AuthenticationError::RegistrationFailed => write!(f, "Registration failed"),
+            AuthenticationError::InvalidRequest => write!(f, "Invalid request"),
         }
     }
 }
