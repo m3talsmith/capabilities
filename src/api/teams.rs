@@ -155,7 +155,9 @@ pub async fn get_teams(token: RawToken) -> status::Custom<Value> {
 
     let invited_teams = try_join_all(team_futures).await.unwrap_or_default();
 
-    let teams = vec![owned_teams, invited_teams];
+    let mut teams = Vec::new();
+    teams.extend(owned_teams);
+    teams.extend(invited_teams);
 
     status::Custom(
         Status::Ok,
