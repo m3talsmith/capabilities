@@ -5,11 +5,11 @@ use crate::models::authentication::AuthenticationError;
 use crate::models::invitation::{Invitation, InvitationError};
 use crate::models::team::{Team, TeamError};
 use crate::models::team_role::TeamRole;
-use crate::models::team_user::TeamUser;
 use crate::models::user::{User, UserError};
 use crate::{
     delete_resource_where_fields, find_all_unarchived_resources_where_fields,
-    find_one_unarchived_resource_where_fields, insert_resource, update_resource,
+    find_one_resource_where_fields, find_one_unarchived_resource_where_fields, insert_resource,
+    update_resource,
 };
 use futures::future::try_join_all;
 use rocket::http::Status;
@@ -256,6 +256,7 @@ pub async fn get_team(token: RawToken, team_id: String) -> status::Custom<Value>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateTeamRequest {
     pub team_name: String,
     pub team_description: Option<String>,
@@ -298,77 +299,102 @@ pub async fn create_team(
         }
     };
 
-    // Create the team
     let team_params = vec![
-        (
-            "owner_id",
-            DatabaseValue::String(token_value.user_id.clone()),
-        ),
+        ("owner_id", user_id),
         (
             "team_name",
             DatabaseValue::String(team_data.team_name.clone()),
         ),
-        (
-            "team_description",
-            match &team_data.team_description {
-                Some(desc) => DatabaseValue::String(desc.clone()),
-                None => DatabaseValue::None,
-            },
-        ),
     ];
 
-    let team = match insert_resource!(Team, team_params).await {
-        Ok(team) => team,
-        Err(err) => {
-            println!("Error creating team: {:?}", err);
-            return status::Custom(
-                Status::InternalServerError,
-                serde_json::to_value(TeamsResponse::error(
-                    TeamError::TeamCreationFailed,
-                    TeamError::TeamCreationFailed.to_string(),
-                ))
-                .unwrap(),
-            );
+    match find_one_resource_where_fields!(Team, team_params).await {
+        Ok(team) => {
+            // Team exists, update it
+            let team_params = vec![
+                ("archived_at", DatabaseValue::None),
+                (
+                    "team_name",
+                    DatabaseValue::String(team_data.team_name.clone()),
+                ),
+                (
+                    "team_description",
+                    DatabaseValue::String(team_data.team_description.clone().unwrap_or_default()),
+                ),
+            ];
+            match update_resource!(Team, team.id, team_params).await {
+                Ok(team) => status::Custom(
+                    Status::Ok,
+                    serde_json::to_value(TeamsResponse::success(
+                        serde_json::to_value(team).unwrap(),
+                        Some("Team updated successfully".to_string()),
+                    ))
+                    .unwrap(),
+                ),
+                Err(err) => {
+                    println!("Error updating team: {:?}", err);
+                    return status::Custom(
+                        Status::InternalServerError,
+                        serde_json::to_value(TeamsResponse::error(
+                            TeamError::TeamUpdateFailed,
+                            TeamError::TeamUpdateFailed.to_string(),
+                        ))
+                        .unwrap(),
+                    );
+                }
+            }
         }
-    };
+        Err(_) => {
+            // Team doesn't exist, continue with creation
+            let team_params = vec![
+                (
+                    "owner_id",
+                    DatabaseValue::String(token_value.user_id.clone()),
+                ),
+                (
+                    "team_name",
+                    DatabaseValue::String(team_data.team_name.clone()),
+                ),
+                (
+                    "team_description",
+                    match &team_data.team_description {
+                        Some(desc) => DatabaseValue::String(desc.clone()),
+                        None => DatabaseValue::None,
+                    },
+                ),
+            ];
 
-    let team_id = team.id.clone().unwrap();
-    let team_user_params = vec![
-        ("team_id", DatabaseValue::String(team_id)),
-        (
-            "user_id",
-            DatabaseValue::String(token_value.user_id.clone()),
-        ),
-    ];
-    let _ = match insert_resource!(TeamUser, team_user_params).await {
-        Ok(_) => (),
-        Err(err) => {
-            println!("Error creating team user: {:?}", err);
-            return status::Custom(
-                Status::InternalServerError,
-                serde_json::to_value(TeamsResponse::error(
-                    TeamError::TeamCreationFailed,
-                    TeamError::TeamCreationFailed.to_string(),
-                ))
-                .unwrap(),
+            let team = match insert_resource!(Team, team_params).await {
+                Ok(team) => team,
+                Err(err) => {
+                    println!("Error creating team: {:?}", err);
+                    return status::Custom(
+                        Status::InternalServerError,
+                        serde_json::to_value(TeamsResponse::error(
+                            TeamError::TeamCreationFailed,
+                            TeamError::TeamCreationFailed.to_string(),
+                        ))
+                        .unwrap(),
+                    );
+                }
+            };
+
+            let team_response = TeamsResponse::success(
+                serde_json::to_value(team.clone()).unwrap(),
+                Some("Team created successfully".to_string()),
             );
+
+            status::Custom(
+                Status::Created,
+                serde_json::to_value(team_response).unwrap(),
+            )
         }
-    };
-
-    let team_response = TeamsResponse::success(
-        serde_json::to_value(team.clone()).unwrap(),
-        Some("Team created successfully".to_string()),
-    );
-
-    status::Custom(
-        Status::Created,
-        serde_json::to_value(team_response).unwrap(),
-    )
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTeamRequest {
-    pub team_name: Option<String>,
+    pub team_name: String,
     pub team_description: Option<String>,
 }
 
@@ -429,11 +455,14 @@ pub async fn update_team(
     let team_update_params = vec![
         (
             "team_name",
-            DatabaseValue::String(team_data.team_name.clone().unwrap()),
+            DatabaseValue::String(team_data.team_name.clone()),
         ),
         (
             "team_description",
-            DatabaseValue::String(team_data.team_description.clone().unwrap()),
+            match &team_data.team_description {
+                Some(desc) => DatabaseValue::String(desc.clone()),
+                None => DatabaseValue::None,
+            },
         ),
     ];
 

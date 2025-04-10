@@ -26,6 +26,7 @@ impl std::fmt::Display for TeamError {
 impl std::error::Error for TeamError {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Team {
     pub id: Option<String>,
     pub owner_id: Option<String>,
