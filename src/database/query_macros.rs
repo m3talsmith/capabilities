@@ -1,6 +1,9 @@
 #[macro_export]
 macro_rules! find_all_resources_where_fields {
     ($resource:ty, $params:expr) => {{
+        find_all_resources_where_fields!($resource, $params, "created_at ASC")
+    }};
+    ($resource:ty, $params:expr, $order_by:expr) => {{
         use crate::database::{
             connection::get_connection, traits::DatabaseResource, values::DatabaseValue,
         };
@@ -30,6 +33,7 @@ macro_rules! find_all_resources_where_fields {
                     query.push_str(" AND ");
                 }
             }
+            query.push_str(&format!(" ORDER BY {}", $order_by));
 
             let mut query = sqlx::query(&query);
             for value in values.iter() {
@@ -49,6 +53,9 @@ macro_rules! find_all_resources_where_fields {
 #[macro_export]
 macro_rules! find_all_unarchived_resources_where_fields {
     ($resource:ty, $params:expr) => {{
+        find_all_unarchived_resources_where_fields!($resource, $params, "created_at ASC")
+    }};
+    ($resource:ty, $params:expr, $order_by:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
         use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
@@ -76,7 +83,7 @@ macro_rules! find_all_unarchived_resources_where_fields {
                     query.push_str(" AND ");
                 }
             }
-
+            query.push_str(&format!(" ORDER BY {}", $order_by));
             let mut query = sqlx::query(&query);
             for (_, value) in values.iter().enumerate() {
                 query = query.bind(value);
@@ -95,6 +102,9 @@ macro_rules! find_all_unarchived_resources_where_fields {
 #[macro_export]
 macro_rules! find_all_archived_resources_where_fields {
     ($resource:ty, $params:expr) => {{
+        find_all_archived_resources_where_fields!($resource, $params, "created_at ASC")
+    }};
+    ($resource:ty, $params:expr, $order_by:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
         use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
@@ -122,6 +132,7 @@ macro_rules! find_all_archived_resources_where_fields {
                     query.push_str(" AND ");
                 }
             }
+            query.push_str(&format!(" ORDER BY {}", $order_by));
 
             let mut query = sqlx::query(&query);
             for (_, value) in values.iter().enumerate() {
@@ -141,6 +152,9 @@ macro_rules! find_all_archived_resources_where_fields {
 #[macro_export]
 macro_rules! find_one_resource_where_fields {
     ($resource:ty, $params:expr) => {{
+        find_one_resource_where_fields!($resource, $params, "created_at ASC")
+    }};
+    ($resource:ty, $params:expr, $order_by:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
         use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
@@ -165,7 +179,7 @@ macro_rules! find_one_resource_where_fields {
                     query.push_str(" AND ");
                 }
             }
-            query.push_str(" LIMIT 1");
+            query.push_str(&format!(" ORDER BY {} LIMIT 1", $order_by));
 
             let mut query = sqlx::query(&query);
             for (_, value) in values.iter().enumerate() {
@@ -182,6 +196,9 @@ macro_rules! find_one_resource_where_fields {
 #[macro_export]
 macro_rules! find_one_unarchived_resource_where_fields {
     ($resource:ty, $params:expr) => {{
+        find_one_unarchived_resource_where_fields!($resource, $params, "created_at ASC")
+    }};
+    ($resource:ty, $params:expr, $order_by:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
         use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
@@ -209,7 +226,7 @@ macro_rules! find_one_unarchived_resource_where_fields {
                     query.push_str(" AND ");
                 }
             }
-            query.push_str(" LIMIT 1");
+            query.push_str(&format!(" ORDER BY {} LIMIT 1", $order_by));
 
             let mut query = sqlx::query(&query);
             for (_, value) in values.iter().enumerate() {
@@ -226,6 +243,9 @@ macro_rules! find_one_unarchived_resource_where_fields {
 #[macro_export]
 macro_rules! find_one_archived_resource_where_fields {
     ($resource:ty, $params:expr) => {{
+        find_one_archived_resource_where_fields!($resource, $params, "created_at ASC")
+    }};
+    ($resource:ty, $params:expr, $order_by:expr) => {{
         use crate::database::{connection::get_connection, traits::DatabaseResource};
         use crate::utils::strings::camel_to_snake_case;
         use pluralizer::pluralize;
@@ -254,7 +274,7 @@ macro_rules! find_one_archived_resource_where_fields {
                     query.push_str(" AND ");
                 }
             }
-            query.push_str(" LIMIT 1");
+            query.push_str(&format!(" ORDER BY {} LIMIT 1", $order_by));
 
             let mut query = sqlx::query(&query);
             for (_, value) in $params.iter().enumerate() {

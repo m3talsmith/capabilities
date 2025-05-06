@@ -122,10 +122,17 @@ pub async fn get_user_skills(token: RawToken) -> status::Custom<Value> {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateUserSkillRequest {
+    pub skill_name: String,
+    pub skill_level: i32,
+}
+
 #[post("/", data = "<user_skill>")]
 pub async fn create_user_skill(
     token: RawToken,
-    user_skill: Json<UserSkill>,
+    user_skill: Json<CreateUserSkillRequest>,
 ) -> status::Custom<Value> {
     let token_value = match validate_token(token).await {
         Ok(token) => token,
@@ -160,8 +167,8 @@ pub async fn create_user_skill(
     };
 
     let user_id = DatabaseValue::String(user.id.unwrap());
-    let skill_name = DatabaseValue::String(user_skill.skill_name.clone().unwrap().to_lowercase());
-    let skill_level = DatabaseValue::Int(user_skill.skill_level.unwrap().to_string());
+    let skill_name = DatabaseValue::String(user_skill.skill_name.clone().to_lowercase());
+    let skill_level = DatabaseValue::Int(user_skill.skill_level.to_string());
 
     let params = vec![
         ("user_id", user_id),
@@ -192,11 +199,18 @@ pub async fn create_user_skill(
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateUserSkillRequest {
+    pub skill_name: String,
+    pub skill_level: i32,
+}
+
 #[put("/<user_skill_id>", data = "<user_skill>")]
 pub async fn update_user_skill(
     token: RawToken,
     user_skill_id: &str,
-    user_skill: Json<UserSkill>,
+    user_skill: Json<UpdateUserSkillRequest>,
 ) -> status::Custom<Value> {
     let token_value = match validate_token(token).await {
         Ok(token) => token,
@@ -232,8 +246,8 @@ pub async fn update_user_skill(
 
     let user_id = DatabaseValue::String(user.id.unwrap());
     let skill_id = DatabaseValue::String(user_skill_id.to_string());
-    let skill_name = DatabaseValue::String(user_skill.skill_name.clone().unwrap().to_lowercase());
-    let skill_level = DatabaseValue::Int(user_skill.skill_level.unwrap().to_string());
+    let skill_name = DatabaseValue::String(user_skill.skill_name.clone().to_lowercase());
+    let skill_level = DatabaseValue::Int(user_skill.skill_level.to_string());
 
     let params = vec![
         ("id", skill_id),

@@ -28,6 +28,7 @@ impl std::fmt::Display for UserSkillError {
 impl std::error::Error for UserSkillError {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct UserSkill {
     pub id: Option<String>,
     pub user_id: Option<String>,
