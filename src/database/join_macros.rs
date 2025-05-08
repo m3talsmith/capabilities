@@ -10,8 +10,16 @@ macro_rules! join_all_resources_where_fields_on {
             let resource_table_name = pluralize(&resource_name, 2, false);
             let resource_join_name = format!("{}_id", resource_name);
             let join_resource_name = camel_to_snake_case(stringify!($join_resource).to_string());
-            let join_resource_table_name = pluralize(&join_resource_name, 2, false);
-            let join_resource_join_name = format!("{}_id", join_resource_name);
+            let mut join_resource_name_parts = join_resource_name
+                .split("_")
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>();
+            let join_resource_id_name = join_resource_name_parts[0].clone();
+            for part in join_resource_name_parts.iter_mut() {
+                *part = pluralize(part, 2, false);
+            }
+            let join_resource_table_name = join_resource_name_parts.join("_");
+            let join_resource_join_name = format!("{}_id", join_resource_id_name);
             let pool = get_connection().await;
 
             let fields = $params

@@ -87,7 +87,12 @@ async fn main() -> anyhow::Result<()> {
         )
         .mount(
             "/api/teams",
-            routes![api::teams::get_teams, api::teams::get_team,],
+            routes![
+                api::teams::teams::get_teams,
+                api::teams::teams::get_team,
+                api::teams::invitations::get_invitations,
+                api::teams::users::get_users,
+            ],
         )
         .mount(
             "/api/invitations",
